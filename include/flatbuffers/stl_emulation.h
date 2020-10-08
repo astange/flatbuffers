@@ -20,11 +20,13 @@
 // clang-format off
 #include "flatbuffers/base.h"
 
+#ifndef FLATBUFFERS_NO_STL
 #include <string>
 #include <type_traits>
 #include <vector>
 #include <memory>
 #include <limits>
+#endif
 
 // Detect C++17 compatible compiler.
 // __cplusplus >= 201703L - a compiler has support of 'static inline' variables.
@@ -48,6 +50,7 @@
 // This header provides backwards compatibility for C++98 STLs like stlport.
 namespace flatbuffers {
 
+#ifndef FLATBUFFERS_NO_STL
 // Retrieve ::back() from a string in a way that is compatible with pre C++11
 // STLs (e.g stlport).
 inline char& string_back(std::string &value) {
@@ -79,6 +82,7 @@ inline void vector_emplace_back(std::vector<T> *vector, V &&data) {
     vector->emplace_back(std::forward<V>(data));
   #endif  // defined(FLATBUFFERS_CPP98_STL)
 }
+#endif  // FLATBUFFERS_NO_STL
 
 #ifndef FLATBUFFERS_CPP98_STL
   #if defined(FLATBUFFERS_TEMPLATES_ALIASES)
@@ -185,6 +189,7 @@ inline void vector_emplace_back(std::vector<T> *vector, V &&data) {
   struct integral_constant : public std::integral_constant<T, v> {};
 #endif  // defined(FLATBUFFERS_TEMPLATES_ALIASES)
 
+#ifndef FLATBUFFERS_NO_STL
 #ifndef FLATBUFFERS_CPP98_STL
   #if defined(FLATBUFFERS_TEMPLATES_ALIASES)
     template <class T> using unique_ptr = std::unique_ptr<T>;
@@ -443,6 +448,7 @@ FLATBUFFERS_CONSTEXPR_CPP11 bool operator==(const Optional<T>& lhs, const Option
               : !static_cast<bool>(lhs) ? false : (*lhs == *rhs);
 }
 #endif // FLATBUFFERS_USE_STD_OPTIONAL
+#endif  // !FLATBUFFERS_NO_STL
 
 }  // namespace flatbuffers
 

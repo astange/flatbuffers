@@ -20,7 +20,7 @@
 #include "flatbuffers/base.h"
 #include "flatbuffers/stl_emulation.h"
 
-#ifndef FLATBUFFERS_CPP98_STL
+#if !defined(FLATBUFFERS_CPP98_STL) || !defined(FLATBUFFERS_NO_STL)
   #include <functional>
 #endif
 
@@ -559,7 +559,9 @@ static inline bool StringLessThan(const char *a_data, uoffset_t a_size,
 
 struct String : public Vector<char> {
   const char *c_str() const { return reinterpret_cast<const char *>(Data()); }
+  #ifndef FLATBUFFERS_NO_STL
   std::string str() const { return std::string(c_str(), size()); }
+  #endif
 
   // clang-format off
   #ifdef FLATBUFFERS_HAS_STRING_VIEW
@@ -574,11 +576,13 @@ struct String : public Vector<char> {
   }
 };
 
+#ifndef FLATBUFFERS_NO_STL
 // Convenience function to get std::string from a String returning an empty
 // string on null pointer.
 static inline std::string GetString(const String *str) {
   return str ? str->str() : "";
 }
+#endif
 
 // Convenience function to get char* from a String returning an empty string on
 // null pointer.
@@ -1076,6 +1080,7 @@ inline voffset_t FieldIndexToOffset(voffset_t field_id) {
   return static_cast<voffset_t>((field_id + fixed_fields) * sizeof(voffset_t));
 }
 
+#ifndef FLATBUFFERS_NO_STL
 template<typename T, typename Alloc>
 const T *data(const std::vector<T, Alloc> &v) {
   // Eventually the returned pointer gets passed down to memcpy, so
@@ -1089,6 +1094,7 @@ template<typename T, typename Alloc> T *data(std::vector<T, Alloc> &v) {
   static uint8_t t;
   return v.empty() ? reinterpret_cast<T *>(&t) : &v.front();
 }
+#endif
 
 /// @endcond
 
@@ -1518,6 +1524,7 @@ class FlatBufferBuilder {
     return CreateString(str, strlen(str));
   }
 
+  #ifndef FLATBUFFERS_NO_STL
   /// @brief Store a string in the buffer, which can contain any binary data.
   /// @param[in] str A const reference to a std::string to store in the buffer.
   /// @return Returns the offset in the buffer where the string starts.
@@ -1602,6 +1609,7 @@ class FlatBufferBuilder {
   Offset<String> CreateSharedString(const String *str) {
     return CreateSharedString(str->c_str(), str->size());
   }
+  #endif  // !FLATBUFFERS_NO_STL
 
   /// @cond FLATBUFFERS_INTERNAL
   uoffset_t EndVector(size_t len) {
@@ -1671,6 +1679,7 @@ class FlatBufferBuilder {
     return Offset<Vector<Offset<T>>>(EndVector(len));
   }
 
+  #ifndef FLATBUFFERS_NO_STL
   /// @brief Serialize a `std::vector` into a FlatBuffer `vector`.
   /// @tparam T The data type of the `std::vector` elements.
   /// @param v A const reference to the `std::vector` to serialize into the
@@ -1691,9 +1700,10 @@ class FlatBufferBuilder {
     }
     return Offset<Vector<uint8_t>>(EndVector(v.size()));
   }
+  #endif  // FLATBUFFERS_NO_STL
 
   // clang-format off
-  #ifndef FLATBUFFERS_CPP98_STL
+  #if !defined(FLATBUFFERS_CPP98_STL) && !defined(FLATBUFFERS_NO_STL)
   /// @brief Serialize values returned by a function into a FlatBuffer `vector`.
   /// This is a convenience function that takes care of iteration for you.
   /// @tparam T The data type of the `std::vector` elements.
@@ -1710,6 +1720,7 @@ class FlatBufferBuilder {
   #endif
   // clang-format on
 
+  #ifndef FLATBUFFERS_NO_STL
   /// @brief Serialize values returned by a function into a FlatBuffer `vector`.
   /// This is a convenience function that takes care of iteration for you.
   /// @tparam T The data type of the `std::vector` elements.
@@ -1738,6 +1749,7 @@ class FlatBufferBuilder {
     for (size_t i = 0; i < v.size(); i++) offsets[i] = CreateString(v[i]);
     return CreateVector(offsets);
   }
+  #endif  // !FLATBUFFERS_NO_STL
 
   /// @brief Serialize an array of structs into a FlatBuffer `vector`.
   /// @tparam T The data type of the struct array elements.
@@ -1753,6 +1765,7 @@ class FlatBufferBuilder {
     return Offset<Vector<const T *>>(EndVector(len));
   }
 
+  #ifndef FLATBUFFERS_NO_STL
   /// @brief Serialize an array of native structs into a FlatBuffer `vector`.
   /// @tparam T The data type of the struct array elements.
   /// @tparam S The data type of the native struct array elements.
@@ -1790,6 +1803,7 @@ class FlatBufferBuilder {
     return EndVectorOfStructs<T>(vector_size);
   }
   #endif
+  #endif  // !FLATBUFFERS_NO_STL
   // clang-format on
 
   /// @brief Serialize an array of structs into a FlatBuffer `vector`.
@@ -1812,6 +1826,7 @@ class FlatBufferBuilder {
     return EndVectorOfStructs<T>(vector_size);
   }
 
+  #ifndef FLATBUFFERS_NO_STL
   /// @brief Serialize a `std::vector` of structs into a FlatBuffer `vector`.
   /// @tparam T The data type of the `std::vector` struct elements.
   /// @param[in] v A const reference to the `std::vector` of structs to
@@ -1951,6 +1966,7 @@ class FlatBufferBuilder {
       std::vector<Offset<T>> *v) {
     return CreateVectorOfSortedTables(data(*v), v->size());
   }
+  #endif  // !FLATBUFFERS_NO_STL
 
   /// @brief Specialized version of `CreateVector` for non-copying use cases.
   /// Write the data any time later to the returned buffer pointer `buf`.
@@ -2088,6 +2104,7 @@ class FlatBufferBuilder {
 
   bool dedup_vtables_;
 
+  #ifndef FLATBUFFERS_NO_STL
   struct StringOffsetCompare {
     StringOffsetCompare(const vector_downward &buf) : buf_(&buf) {}
     bool operator()(const Offset<String> &a, const Offset<String> &b) const {
@@ -2102,6 +2119,7 @@ class FlatBufferBuilder {
   // For use with CreateSharedString. Instantiated on first use only.
   typedef std::set<Offset<String>, StringOffsetCompare> StringOffsetMap;
   StringOffsetMap *string_pool;
+  #endif  // !FLATBUFFERS_NO_STL
 
  private:
   // Allocates space for a vector of structures.
@@ -2279,6 +2297,7 @@ class Verifier FLATBUFFERS_FINAL_CLASS {
     return Verify(veco, byte_size);
   }
 
+  #ifndef FLATBUFFERS_NO_STL
   // Special case for string contents, after the above has been called.
   bool VerifyVectorOfStrings(const Vector<Offset<String>> *vec) const {
     if (vec) {
@@ -2288,6 +2307,7 @@ class Verifier FLATBUFFERS_FINAL_CLASS {
     }
     return true;
   }
+  #endif
 
   // Special case for table contents, after the above has been called.
   template<typename T> bool VerifyVectorOfTables(const Vector<Offset<T>> *vec) {
@@ -2663,7 +2683,7 @@ struct NativeTable {};
 /// is being serialized again.
 typedef uint64_t hash_value_t;
 // clang-format off
-#ifdef FLATBUFFERS_CPP98_STL
+#if defined(FLATBUFFERS_CPP98_STL) || defined(FLATBUFFERS_NO_STL)
   typedef void (*resolver_function_t)(void **pointer_adr, hash_value_t hash);
   typedef hash_value_t (*rehasher_function_t)(void *pointer);
 #else
